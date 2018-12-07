@@ -1,10 +1,18 @@
 version: '3'
 services:
-  snow-webhook:
+  approval:
     build: .
-    container_name: command-webhook
+    container_name: approval
+    links:
+      - redis
     ports:
       - "5018:5018"
     volumes:
       - /opt/scripts:/opt/scripts
       - /var/log/webhook:/var/log/webhook
+      - /opt/sqlite/:/opt/sqlite/
+  redis:
+    restart: always
+    image: redis:5.0.2
+    ports:
+      - "6379:6379"
