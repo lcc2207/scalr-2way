@@ -12,6 +12,7 @@ import binascii
 import dateutil.parser
 import os
 import requests
+import sqlite3
 
 from requests.exceptions import ConnectionError
 from hashlib import sha1
@@ -40,7 +41,18 @@ SCALR_URL = os.getenv('SCALR_URL', '')
 for var in ['SCALR_SIGNING_KEY', 'SCALR_URL']:
     logging.info('Config: %s = %s', var, globals()[var] if 'PASS' not in var else '*' * len(globals()[var]))
 
-@app.route('/approval/', methods=['GET', 'POST'])
+@app.route("/")
+def list():
+   conn = sqlite3.connect('/opt/sqlite/db')
+   conn.row_factory = sqlite3.Row
+
+   cur = conn.cursor()
+   cur.execute("select * from approval_table")
+
+   rows = cur.fetchall();
+   return render_template("list.html",rows = rows)
+
+@app.route('/approval/', methods=['POST'])
 def webhook_listener():
     if not validate_request(request, SCALR_SIGNING_KEY):
         abort(403)

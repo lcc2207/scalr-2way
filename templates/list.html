@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+   <header>
+     <center><h1>Approval Status</h1></center>
+   </header>
+   <body>
+    <center>
+      <table border = 1>
+         <thead bgcolor=EFE9E9 align=center>
+            <td>Id</td>
+            <td>Farm Name</td>
+            <td>Owner</td>
+            <td>Status</td>
+         </thead>
+
+         {% for row in rows %}
+            <tr align=center>
+               <td>{{row["id"]}}</td>
+               <td>{{row["farmname"]}}</td>
+               <td> {{ row["owner_email"]}}</td>
+               <td>{{row['status']}}</td>
+            </tr>
+         {% endfor %}
+      </table>
+      </center>
+
+   </body>
+</html>
