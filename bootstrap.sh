@@ -9,4 +9,7 @@ service docker start || systemctl start docker
 
 mkdir -p /var/log/webhook
 
+#create the database
+python ./sqlite3/setupdb.py
+
 # git clone https://github.com/lcc2207/scalr-command-webhook.git /opt/command-webhook
