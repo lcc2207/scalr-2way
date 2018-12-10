@@ -40,7 +40,7 @@ SCALR_URL = os.getenv('SCALR_URL', '')
 for var in ['SCALR_SIGNING_KEY', 'SCALR_URL']:
     logging.info('Config: %s = %s', var, globals()[var] if 'PASS' not in var else '*' * len(globals()[var]))
 
-@app.route('/approval/', methods=['POST'])
+@app.route('/approval/', methods=['GET', 'POST'])
 def webhook_listener():
     if not validate_request(request, SCALR_SIGNING_KEY):
         abort(403)
@@ -48,10 +48,12 @@ def webhook_listener():
     event = data['eventName']
     logging.info(request.headers)
     requestid = data['requestId']
+    owneremail = data['data']['SCALR_FARM_OWNER_EMAIL']
+    farmname = data['data']['SCALR_FARM_NAME']
     logging.info(requestid)
 
     # log pending state and requirest ID to sqlitedb (called from util.py)
-    dbupdate(requestid, 'pending')
+    dbupdate(requestid, 'pending', farmname, owneremail)
     # set approval state to pending
     resp = make_response(json.dumps({ "approval_status": "pending", "message": "pending"}), 202)
 
