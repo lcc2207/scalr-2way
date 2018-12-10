@@ -8,6 +8,7 @@ curl -fsSL https://get.docker.com/ | sh
 service docker start || systemctl start docker
 
 mkdir -p /var/log/webhook
+mkdir -p /opt/redisdata
 
 #create the database
 python ./sqlite3/setupdb.py
