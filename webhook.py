@@ -4,32 +4,16 @@ from flask import Flask
 from flask import request
 from flask import abort
 from flask import make_response
+from flask import render_template
 
 import string
 import json
 import logging
-import binascii
-import dateutil.parser
 import os
-import requests
-import sqlite3
-
-from requests.exceptions import ConnectionError
-from hashlib import sha1
-from datetime import datetime
 
 # inlude files
 from validate import validate_request
-from utils import approval, dbupdate
-
-import redis
-from rq import Worker, Queue, Connection
-
-listen = ['high', 'default', 'low']
-
-redis_url = os.getenv('REDISTOGO_URL', 'redis://redis:6379')
-
-conn = redis.from_url(redis_url)
+from utils import approval, dbupdate, dbrow, redisqueue
 
 logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__)
@@ -43,13 +27,7 @@ for var in ['SCALR_SIGNING_KEY', 'SCALR_URL']:
 
 @app.route("/")
 def list():
-   conn = sqlite3.connect('/opt/sqlite/db')
-   conn.row_factory = sqlite3.Row
-
-   cur = conn.cursor()
-   cur.execute("select * from approval_table")
-
-   rows = cur.fetchall();
+   rows = dbrow()
    return render_template("list.html",rows = rows)
 
 @app.route('/approval/', methods=['POST'])
@@ -58,22 +36,19 @@ def webhook_listener():
         abort(403)
     data = json.loads(request.data)
     event = data['eventName']
-    logging.info(request.headers)
     requestid = data['requestId']
     owneremail = data['data']['SCALR_FARM_OWNER_EMAIL']
     farmname = data['data']['SCALR_FARM_NAME']
+    operation = data['operation']
     logging.info(requestid)
 
     # log pending state and requirest ID to sqlitedb (called from util.py)
-    dbupdate(requestid, 'pending', farmname, owneremail)
+    dbupdate(requestid, 'pending', farmname, owneremail, operation)
     # set approval state to pending
     resp = make_response(json.dumps({ "approval_status": "pending", "message": "pending"}), 202)
-
     # redis (called from util.py)
-    q = Queue(connection=conn)
-    status = q.enqueue(approval, requestid, SCALR_SIGNING_KEY, SCALR_URL)
-    logging.info(status.result)
-
+    status = redisqueue(approval, requestid, SCALR_SIGNING_KEY, SCALR_URL)
+    logging.info(status)
     return resp
 
 if __name__ == '__main__':

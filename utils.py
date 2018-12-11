@@ -5,16 +5,19 @@ import sqlite3
 import binascii
 import hmac
 from hashlib import sha1
-from datetime import datetime
 import requests
+import datetime as dt
+import redis
+from rq import Worker, Queue, Connection
 
+conn = sqlite3.connect('/opt/sqlite/db')
 #################################
 # from utils import approval, dbupdate
 # approval('<requestid>', '<webhookkey>', 'http://scalr_server')
 
 def approval(requestid, signing_key, scalr_url):
     payload = """{"approval_status": "approved", "message": "approved"}"""
-    date = httpdate(datetime.utcnow())
+    date = dt.datetime.now().strftime('%a %d %b %Y %H:%M:%S') + ' UTC'
     sig = signature(date, payload, signing_key)
     time.sleep(30) # add in other work here
     headers = {
@@ -23,30 +26,38 @@ def approval(requestid, signing_key, scalr_url):
         }
     req = requests.post(scalr_url + "/integration-hub/callback/" + requestid,
                         headers=headers, data=payload)
-    dbupdate(requestid, "approved", '', '')
+    dbupdate(requestid, "approved", '', '', '')
     return  req.status_code
-
-def httpdate(dt):
-    """Return a string representation of a date according to RFC 1123
-    (HTTP/1.1).
-    The supplied date must be in UTC.
-    """
-    weekday = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][dt.weekday()]
-    month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep",
-             "Oct", "Nov", "Dec"][dt.month - 1]
-    return "%s, %02d %s %04d %02d:%02d:%02d GMT" % (weekday, dt.day, month,
-                                                    dt.year, dt.hour, dt.minute, dt.second)
 
 def signature(date, body, signing_key):
     return binascii.hexlify(hmac.new(signing_key, body + date, sha1).digest())
 
-def dbupdate(requestid, state ,farmname, owneremail):
-    conn = sqlite3.connect('/opt/sqlite/db')
+def dbupdate(requestid, state ,farmname, owneremail, operation):
     c = conn.cursor()
     if state == 'pending':
-            c.execute("INSERT OR IGNORE INTO approval_table values('" + requestid + "', '" + farmname + "', '" + owneremail + "', '"  + state + "');")
+        if operation == 'farm.approval.launch':
+            operation = 'Launch'
+        elif operation == 'farm.approval.terminate':
+            operation = 'Terminate'
+
+        c.execute("INSERT OR IGNORE INTO approval_table values('" + requestid + "', '" + farmname + "', '" + owneremail + "', '" + operation + "', '" + state + "');")
     else:
-            c.execute("UPDATE approval_table SET status ='" + state + "'  WHERE id= '" + requestid + "';")
+        c.execute("UPDATE approval_table SET status ='" + state + "'  WHERE id= '" + requestid + "';")
 
     conn.commit()
-    conn.close()
+
+def dbrow():
+   conn.row_factory = sqlite3.Row
+   cur = conn.cursor()
+   cur.execute("select * from approval_table order by farmname")
+   rows = cur.fetchall()
+   return(rows)
+
+def redisqueue(approval, requestid, SCALR_SIGNING_KEY, SCALR_URL):
+    #redis connections
+    listen = ['high', 'default', 'low']
+    redis_url = 'redis://redis:6379'
+    conn = redis.from_url(redis_url)
+    q = Queue(connection=conn)
+    status = q.enqueue(approval, requestid, SCALR_SIGNING_KEY, SCALR_URL)
+    return(status.result)

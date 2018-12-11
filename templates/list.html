@@ -10,6 +10,7 @@
             <td>Id</td>
             <td>Farm Name</td>
             <td>Owner</td>
+            <td>Operation</td>
             <td>Status</td>
          </thead>
 
@@ -17,7 +18,8 @@
             <tr align=center>
                <td>{{row["id"]}}</td>
                <td>{{row["farmname"]}}</td>
-               <td> {{ row["owner_email"]}}</td>
+               <td> {{row["owner_email"]}}</td>
+               <td> {{row["operation"]}}</td>
                <td>{{row['status']}}</td>
             </tr>
          {% endfor %}

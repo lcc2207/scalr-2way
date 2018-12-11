@@ -13,6 +13,7 @@ signing_key = '123456789'
 payload = """{
     "eventName": "HostUp",
     "eventId": "a4eda072-7deb-40e4-b32c-fd0edecea23f",
+    "requestId":"b7f5edcf-88fb-4a87-96e4-f56871bcaad7",
     "userData": "",
     "data": {
         "SCALR_EVENT_FARM_ROLE_ID": "67460",
